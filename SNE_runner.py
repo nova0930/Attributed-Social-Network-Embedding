@@ -3,6 +3,8 @@ import argparse
 import numpy as np
 import LoadData as data
 from SNE import SNE
+from visualize_embedding import plot_embedding2D
+import matplotlib.pyplot as plt
 
 # Set random seeds
 SEED = 2016
@@ -11,7 +13,7 @@ np.random.seed(SEED)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run SNE.")
-    parser.add_argument('--data_path', nargs='?', default='../UNC/',
+    parser.add_argument('--data_path', nargs='?', default='./data/',
                         help='Input data path')
     parser.add_argument('--id_dim', type=int, default=20,
                         help='Dimension for id_part.')
@@ -28,8 +30,10 @@ def parse_args():
 
 def run_SNE( data, id_dim, attr_dim ):
     model = SNE( data, id_embedding_size=id_dim, attr_embedding_size=attr_dim)
-    model.train( )
+    embeddings = model.train( )
 
+    # plot_embedding2D(embeddings, node_colors=None, di_graph=None)
+    # plt.show()
 
 if __name__ == '__main__':
     args = parse_args()

@@ -14,9 +14,10 @@ import evaluation
 
 class SNE(BaseEstimator, TransformerMixin):
     def __init__(self, data, id_embedding_size, attr_embedding_size,
-                 batch_size=128, alpha = 1.0, n_neg_samples=10,
-                epoch=20, random_seed = 2016):
+                 batch_size=32, alpha = 0.5, n_neg_samples=10,
+                epoch=7, random_seed = 2016):
         # bind params to class
+        self.node_neighbors_map = data.node_neighbors_map
         self.batch_size = batch_size
         self.node_N = data.id_N
         self.attr_M = data.attr_M
@@ -54,19 +55,19 @@ class SNE(BaseEstimator, TransformerMixin):
             # Look up embeddings for node_id.
             self.id_embed =  tf.nn.embedding_lookup(self.weights['in_embeddings'], self.train_data_id) # batch_size * id_dim
             self.attr_embed =  tf.matmul(self.train_data_attr, self.weights['attr_embeddings'])  # batch_size * attr_dim
-            self.embed_layer = tf.concat(1, [self.id_embed, self.alpha * self.attr_embed]) # batch_size * (id_dim + attr_dim)
+            self.embed_layer = tf.concat([(1- self.alpha) * self.id_embed, self.alpha * self.attr_embed], 1) # batch_size * (id_dim + attr_dim)
 
             ## can add hidden_layers component here!
 
             # Compute the loss, using a sample of the negative labels each time.
-            self.loss =  tf.reduce_mean(tf.nn.sampled_softmax_loss(self.weights['out_embeddings'], self.weights['biases'], self.embed_layer,
-                                                  self.train_labels, self.n_neg_samples, self.node_N))
+            self.loss =  tf.reduce_mean(tf.nn.sampled_softmax_loss(self.weights['out_embeddings'], self.weights['biases'],
+                                                  self.train_labels,  self.embed_layer,  self.n_neg_samples, self.node_N))
             # Optimizer.
             self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(self.loss)
             # print("AdamOptimizer")
 
             # init
-            init = tf.initialize_all_variables()
+            init = tf.global_variables_initializer()
             self.sess = tf.Session()
             self.sess.run(init)
 
@@ -91,7 +92,7 @@ class SNE(BaseEstimator, TransformerMixin):
 
     def train(self): # fit a dataset
 
-        print 'Using in + out embedding'
+        print('Using in + out embedding')
 
         for epoch in range( self.epoch ):
             total_batch = int( len(self.X_train['data_id_list']) / self.batch_size)
@@ -104,7 +105,6 @@ class SNE(BaseEstimator, TransformerMixin):
                 batch_xs['batch_data_id'] = self.X_train['data_id_list'][start_index:(start_index + self.batch_size)]
                 batch_xs['batch_data_attr'] = self.X_train['data_attr_list'][start_index:(start_index + self.batch_size)]
                 batch_xs['batch_data_label'] = self.X_train['data_label_list'][start_index:(start_index + self.batch_size)]
-
                 # Fit training using batch data
                 cost = self.partial_fit(batch_xs)
 
@@ -115,10 +115,10 @@ class SNE(BaseEstimator, TransformerMixin):
 
             # link prediction test
             roc = evaluation.evaluate_ROC(self.X_test, Embeddings)
-            print "Epoch:", '%04d' % (epoch + 1), \
-                         "roc=", "{:.9f}".format(roc)
+            print("Epoch:", '%04d' % (epoch + 1), \
+                         "roc=", "{:.9f}".format(roc))
 
-
+        return Embeddings
     def getEmbedding(self, type, nodes):
         if type == 'embed_layer':
             feed_dict = {self.train_data_id: nodes['node_id'], self.train_data_attr: nodes['node_attr']}

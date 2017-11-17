@@ -18,9 +18,10 @@ class LoadData( object ):
         np.random.seed(random_seed)
         random.seed(random_seed)
         self.path = path
-        self.linkfile = path + "doublelink.edgelist"
-        self.testlinkfile = path + "test_pairs.txt"
-        self.attrfile = path + "attr_info.txt"
+        self.linkfile = path + "yeast_edgelist_biogrid.txt"
+        self.testlinkfile = path + "yeast_edgelist_test.txt"
+        # self.attrfile = path + "yeast_data.txt"
+        self.attrfile = path + "yeast_data_normalized.txt"
         #self.vocabfile = path + "vocab.txt"
         self.node_map = {} # [node_name: id] for map node to id inside the program, based on links since some nodes might not have attributes
         self.nodes = {}
@@ -48,9 +49,16 @@ class LoadData( object ):
         self.attr_M = i
         print("attr_M:", self.attr_M)
 
+    def readExp(self):
+        f = open(self.attrfile)
+        line = f.readline()
+        items = line.strip().split(' ')
+        self.attr_M = len(items[1:])
+        print("attr_M:", self.attr_M)
+
     def construct_nodes(self):
         '''construct the dictionary '''
-        self.readvocab()
+        self.readExp()
         f = open(self.attrfile)
         i = 0
         self.nodes['node_id'] = []
@@ -61,9 +69,10 @@ class LoadData( object ):
             self.node_map[int(line[0])] = i # map the node
             self.nodes['node_id'].append(i) # only put id in nodes, not the original name
             vs = np.zeros(self.attr_M)
-            for attr in line[1:]:
-                if len(attr) > 0:
-                    vs[self.vocab[attr]] = 1
+            # for attr in line[1:]:
+            #     if len(attr) > 0:
+            #         vs[self.vocab[attr]] = 1
+            vs = line[1:]
             self.nodes['node_attr'].append(vs)
             i = i + 1
             line = f.readline()
@@ -89,9 +98,10 @@ class LoadData( object ):
         self.X['data_label_list'] = np.ndarray(shape=(len(self.links), 1), dtype=np.int32)
 
         for i in range(len(self.links)):
-            self.X['data_id_list'][i] = self.node_map[self.links[i][0]]
-            self.X['data_attr_list'][i] =  self.nodes['node_attr'][ self.node_map[self.links[i][0]] ]  # dimension need to change to  self.attr_dim
-            self.X['data_label_list'][i, 0] = self.node_map[self.links[i][1]]  # one neighbor of the node
+            # print(self.node_map[self.links[i][0]])
+            self.X['data_id_list'][i] = int(self.node_map[self.links[i][0]])
+            self.X['data_attr_list'][i] =  self.nodes['node_attr'][ self.links[i][0] ]  # dimension need to change to  self.attr_dim
+            self.X['data_label_list'][i, 0] = int(self.node_map[self.links[i][1]])  # one neighbor of the node
 
     def construct_node_neighbors_map(self):
         for link in self.links:
