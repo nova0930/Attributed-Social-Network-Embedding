@@ -14,8 +14,8 @@ import evaluation
 
 class SNE(BaseEstimator, TransformerMixin):
     def __init__(self, data, id_embedding_size, attr_embedding_size,
-                 batch_size=32, alpha = 0.5, n_neg_samples=10,
-                epoch=7, random_seed = 2016):
+                 batch_size=32, alpha = 1, n_neg_samples=10,
+                epoch=20, random_seed = 2016):
         # bind params to class
         self.node_neighbors_map = data.node_neighbors_map
         self.batch_size = batch_size
@@ -55,7 +55,7 @@ class SNE(BaseEstimator, TransformerMixin):
             # Look up embeddings for node_id.
             self.id_embed =  tf.nn.embedding_lookup(self.weights['in_embeddings'], self.train_data_id) # batch_size * id_dim
             self.attr_embed =  tf.matmul(self.train_data_attr, self.weights['attr_embeddings'])  # batch_size * attr_dim
-            self.embed_layer = tf.concat([(1- self.alpha) * self.id_embed, self.alpha * self.attr_embed], 1) # batch_size * (id_dim + attr_dim)
+            self.embed_layer = tf.concat([self.id_embed, self.alpha * self.attr_embed], 1) # batch_size * (id_dim + attr_dim)
 
             ## can add hidden_layers component here!
 
@@ -63,9 +63,7 @@ class SNE(BaseEstimator, TransformerMixin):
             self.loss =  tf.reduce_mean(tf.nn.sampled_softmax_loss(self.weights['out_embeddings'], self.weights['biases'],
                                                   self.train_labels,  self.embed_layer,  self.n_neg_samples, self.node_N))
             # Optimizer.
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(self.loss)
-            # print("AdamOptimizer")
-
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(self.loss)
             # init
             init = tf.global_variables_initializer()
             self.sess = tf.Session()
@@ -119,6 +117,7 @@ class SNE(BaseEstimator, TransformerMixin):
                          "roc=", "{:.9f}".format(roc))
 
         return Embeddings
+
     def getEmbedding(self, type, nodes):
         if type == 'embed_layer':
             feed_dict = {self.train_data_id: nodes['node_id'], self.train_data_attr: nodes['node_attr']}

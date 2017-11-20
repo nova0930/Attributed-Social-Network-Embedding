@@ -48,5 +48,3 @@ if __name__ == '__main__':
 
     run_SNE( Data, args.id_dim, args.attr_dim)
 
-
-

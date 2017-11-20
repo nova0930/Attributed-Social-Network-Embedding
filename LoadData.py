@@ -2,7 +2,7 @@ import numpy as np
 import os
 import random
 from random import shuffle
-
+from convertdata import convertdata
 class LoadData( object ):
     '''given the path of data, return the data format for ESNA
     :param path
@@ -18,10 +18,11 @@ class LoadData( object ):
         np.random.seed(random_seed)
         random.seed(random_seed)
         self.path = path
-        self.linkfile = path + "yeast_edgelist_biogrid.txt"
+        self.linkfile = path + "yeast_edgelist_train.txt"
         self.testlinkfile = path + "yeast_edgelist_test.txt"
         # self.attrfile = path + "yeast_data.txt"
         self.attrfile = path + "yeast_data_normalized.txt"
+        convertdata(self.linkfile, self.testlinkfile, 0.1)
         #self.vocabfile = path + "vocab.txt"
         self.node_map = {} # [node_name: id] for map node to id inside the program, based on links since some nodes might not have attributes
         self.nodes = {}

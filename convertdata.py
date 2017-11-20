@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from utils import *
 import pickle
-
+import os
 # Create Data Loader
 from sklearn.preprocessing import MinMaxScaler
 
@@ -35,46 +35,51 @@ def load_gold_standard(gold_standard):
     return X
 
 
-# print('Loading expression data')
-data = load_data("./data/net4_expression_data.tsv")
-scaler = MinMaxScaler()
-X_data = pd.DataFrame(scaler.fit_transform(data))
-X_data.to_csv('./data/yeast_data_normalized.txt', header=None, sep=' ', mode='a')
+def convertdata(train_file, test_file, test_size=0.1):
+    os.remove(test_file)
+    os.remove(train_file)
+    # # print('Loading expression data')
+    data = load_data("./data/net4_expression_data.tsv")
+    # scaler = MinMaxScaler()
+    # X_data = pd.DataFrame(scaler.fit_transform(data))
+    # X_data.to_csv('./data/yeast_data_normalized.txt', header=None, sep=' ', mode='a')
 
-# edgelist = pd.read_csv("./data/yeast_edgelist_biogrid.txt", sep=" ", header=0)
-# x_train, x_test = train_test_split(edgelist, test_size=0.1)
-# n = x_test.shape[0]
-# # print(x_train.shape)
-#
-# edgeMatrix = convertSortedRankTSVToAdjMatrix(edgelist, data.shape[0])
-#
-# # rows = []
-# # cols = []
-# # for row in range(edgeMatrix.shape[0]): # df is the DataFrame
-# #          for col in range(edgeMatrix.shape[1]):
-# #              if edgeMatrix.get_value(row,col) ==  0 and row != col:
-# #                  rows.append(row)
-# #                  cols.append(col)
-#
-# # pickle.dump(rows, open("temp/rows.pkl", "wb"))
-# # pickle.dump(cols, open("temp/cols.pkl", "wb"))
-#
-# rows = pickle.load( open( "temp/rows.pkl", "rb" ) )
-# cols = pickle.load( open( "temp/cols.pkl", "rb" ) )
-# ind = random.sample(rows, n)
-#
-# indexed_rows = [rows[i] for i in ind]
-# indexed_cols = [cols[i] for i in ind]
-# #
-# X_test_0 = np.zeros((n, 3))
-# X_test_0[:,0] = indexed_rows
-# X_test_0[:,1] = indexed_cols
-# X_test_0[:,2] = 0
-# print (X_test_0.shape)
-# # #
-# X_test = pd.DataFrame(np.vstack((x_test, X_test_0))).astype(int)
-# print (X_test.shape)
-# X_test.to_csv('./data/yeast_edgelist_test.txt', header=None, sep=' ', index = False,  mode='a')
+    edgelist = pd.read_csv("./data/yeast_edgelist_biogrid.txt", sep=" ", header=None)
+    x_train, x_test = train_test_split(edgelist, test_size=test_size)
+    n = x_test.shape[0]
+    # print(x_train.shape)
+
+    # edgeMatrix = convertSortedRankTSVToAdjMatrix(edgelist, data.shape[0])
+    #
+    # # rows = []
+    # # cols = []
+    # # for row in range(edgeMatrix.shape[0]): # df is the DataFrame
+    # #          for col in range(edgeMatrix.shape[1]):
+    # #              if edgeMatrix.get_value(row,col) ==  0 and row != col:
+    # #                  rows.append(row)
+    # #                  cols.append(col)
+    #
+    # # pickle.dump(rows, open("temp/rows.pkl", "wb"))
+    # # pickle.dump(cols, open("temp/cols.pkl", "wb"))
+    #
+    rows = pickle.load( open( "temp/rows.pkl", "rb" ) )
+    cols = pickle.load( open( "temp/cols.pkl", "rb" ) )
+    ind = random.sample(rows, n)
+    #
+    indexed_rows = [rows[i] for i in ind]
+    indexed_cols = [cols[i] for i in ind]
+    #
+    X_test_0 = np.zeros((n, 3))
+    X_test_0[:,0] = indexed_rows
+    X_test_0[:,1] = indexed_cols
+    X_test_0[:,2] = 0
+    # print (X_test_0.shape)
+
+    X_test = pd.DataFrame(np.vstack((x_test, X_test_0))).astype(int)
+    # print (X_test.shape)
+    X_test.to_csv(test_file, header=None, sep=' ', index = False,  mode='a')
+
+    x_train.to_csv(train_file, header=None, sep=' ', index = False,  mode='a')
 #
 # #
 # # (54466, 3)
