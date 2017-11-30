@@ -270,7 +270,7 @@ def convertAdjMatrixToSortedRankTSV(inputFile=None, outputFilename=None, desc=Tr
     result =  result.sort_values(['c3', 'c1', 'c2'], ascending=[0, 1, 1])
     result[['c1', 'c2', 'c3']] = result[['c1', 'c2', 'c3']].astype(int)
     # print("Write to file if filename is given")
-    result.to_csv(outputFilename, header=False, columns=None, index=False )
+    # result.to_csv(outputFilename, header=False, columns=None, index=False )
     # else write to function output
     return (result)
 
@@ -307,7 +307,7 @@ def convertSortedRankTSVToAdjMatrix (input=None, nodes=None):
     valuesToAdd = tbl.iloc[startIndices[len(startIndices)-1]:len(tbl.iloc[:, 1]), 2]
 
     m[rowIndexes, colIndex] = valuesToAdd
-    m = pd.DataFrame(m)
+    # m = pd.DataFrame(m)
     # m.to_csv(outputFilename, header=False, columns=None, index=False )
     # else write to function output
     return (m)

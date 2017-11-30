@@ -2,9 +2,10 @@ import random
 import argparse
 import numpy as np
 import LoadData as data
+import evaluation
 from SNE import SNE
-from visualize_embedding import plot_embedding2D
 import matplotlib.pyplot as plt
+import pandas as pd
 
 # Set random seeds
 SEED = 2016
@@ -17,7 +18,7 @@ def parse_args():
                         help='Input data path')
     parser.add_argument('--id_dim', type=int, default=20,
                         help='Dimension for id_part.')
-    parser.add_argument('--epoch', type=int, default=20,
+    parser.add_argument('--epoch', type=int, default=100,
                         help='Number of epochs.')
     parser.add_argument('--n_neg_samples', type=int, default=10,
                         help='Number of negative samples.')
@@ -30,10 +31,20 @@ def parse_args():
 
 def run_SNE( data, id_dim, attr_dim ):
     model = SNE( data, id_embedding_size=id_dim, attr_embedding_size=attr_dim)
-    embeddings = model.train( )
+    embeddings, val_roc = model.train( )
 
-    # plot_embedding2D(embeddings, node_colors=None, di_graph=None)
-    # plt.show()
+    pd.DataFrame(embeddings).to_csv("./output/embeddings.txt")
+    pd.DataFrame(val_roc).to_csv("./output/validation_roc.txt")
+
+    # link prediction test
+    plt.plot(val_roc)
+    plt.ylabel("Validation Accuracy")
+    plt.xlabel("Epochs")
+    plt.title("Model Performance on Hold out Dataset in different epochs")
+    plt.show()
+
+    roc = evaluation.evaluate_ROC(data.X_test, embeddings)
+    print("Accuracy (ROC) in Test Data set", "{:.9f}".format(roc))
 
 if __name__ == '__main__':
     args = parse_args()

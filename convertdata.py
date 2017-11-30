@@ -2,11 +2,12 @@ import random
 
 import pandas as pd
 import numpy as np
+from sklearn import preprocessing
+
 from utils import *
 import pickle
 import os
 # Create Data Loader
-from sklearn.preprocessing import MinMaxScaler
 
 
 def load_data(datafile):
@@ -35,33 +36,18 @@ def load_gold_standard(gold_standard):
     return X
 
 
-def convertdata(train_file, test_file, test_size=0.1):
+def convertdata(train_file, test_file, validation_file, test_size=0.1):
     os.remove(test_file)
     os.remove(train_file)
-    # # print('Loading expression data')
+    os.remove(validation_file)
+
     data = load_data("./data/net4_expression_data.tsv")
-    # scaler = MinMaxScaler()
-    # X_data = pd.DataFrame(scaler.fit_transform(data))
-    # X_data.to_csv('./data/yeast_data_normalized.txt', header=None, sep=' ', mode='a')
 
     edgelist = pd.read_csv("./data/yeast_edgelist_biogrid.txt", sep=" ", header=None)
+    edgelist = edgelist.sample(frac=1).reset_index(drop=True)
     x_train, x_test = train_test_split(edgelist, test_size=test_size)
     n = x_test.shape[0]
-    # print(x_train.shape)
 
-    # edgeMatrix = convertSortedRankTSVToAdjMatrix(edgelist, data.shape[0])
-    #
-    # # rows = []
-    # # cols = []
-    # # for row in range(edgeMatrix.shape[0]): # df is the DataFrame
-    # #          for col in range(edgeMatrix.shape[1]):
-    # #              if edgeMatrix.get_value(row,col) ==  0 and row != col:
-    # #                  rows.append(row)
-    # #                  cols.append(col)
-    #
-    # # pickle.dump(rows, open("temp/rows.pkl", "wb"))
-    # # pickle.dump(cols, open("temp/cols.pkl", "wb"))
-    #
     rows = pickle.load( open( "temp/rows.pkl", "rb" ) )
     cols = pickle.load( open( "temp/cols.pkl", "rb" ) )
     ind = random.sample(rows, n)
@@ -73,14 +59,14 @@ def convertdata(train_file, test_file, test_size=0.1):
     X_test_0[:,0] = indexed_rows
     X_test_0[:,1] = indexed_cols
     X_test_0[:,2] = 0
-    # print (X_test_0.shape)
 
     X_test = pd.DataFrame(np.vstack((x_test, X_test_0))).astype(int)
-    # print (X_test.shape)
+
+    X_test, X_validation = train_test_split(X_test, test_size=0.33)
+
     X_test.to_csv(test_file, header=None, sep=' ', index = False,  mode='a')
 
+    X_validation.to_csv(validation_file, header=None, sep=' ', index = False,  mode='a')
+
     x_train.to_csv(train_file, header=None, sep=' ', index = False,  mode='a')
-#
-# #
-# # (54466, 3)
-# (490185, 3)
+
