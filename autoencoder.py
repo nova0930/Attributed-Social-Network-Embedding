@@ -42,7 +42,7 @@ class autoencoder():
         self.__init_graph()
 
     def read_data(self):
-        self.data = pd.read_csv("./data/yeast/yeast_data.txt", sep=" ", header=None)
+        self.data = pd.read_csv("./data/yeast/data.txt", sep=" ", header=None)
         self.data = np.array(self.data.iloc[:, 1:])
         # scaler = MinMaxScaler()
         # X_train = scaler.fit_transform(data)

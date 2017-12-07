@@ -16,7 +16,7 @@ import evaluation
 
 class SNE(BaseEstimator, TransformerMixin):
     def __init__(self, data, id_embedding_size, attr_embedding_size, pretrained_weights,
-                 batch_size=128, alpha = 1, beta = 0.01, n_neg_samples=10,
+                 batch_size=128, alpha = 0, beta = 0.01, n_neg_samples=10,
                 epoch=100, random_seed = 2016):
         # bind params to class
         self.node_neighbors_map = data.node_neighbors_map
@@ -65,7 +65,8 @@ class SNE(BaseEstimator, TransformerMixin):
             # Look up embeddings for node_id.
             self.id_embed =  tf.nn.embedding_lookup(self.weights['in_embeddings'], self.train_data_id) # batch_size * id_dim
             self.attr_layer_1 = tf.nn.relu(tf.add(tf.matmul(self.train_data_attr, self.weights['attr_hidden_1']), self.weights['attr_bias_1']))
-            self.attr_embed =  tf.nn.relu(tf.add(tf.matmul(self.attr_layer_1, self.weights['attr_embeddings']), self.weights['attr_bias_2'])) # batch_size * attr_dim
+            self.drop_out = tf.nn.dropout(self.attr_layer_1, self.keep_prob)
+            self.attr_embed =  tf.nn.relu(tf.add(tf.matmul(self.drop_out, self.weights['attr_embeddings']), self.weights['attr_bias_2'])) # batch_size * attr_dim
             self.embed_layer = tf.concat([ self.id_embed, self.alpha * (self.attr_embed)], 1) # batch_size * (id_dim + attr_dim)
 
             ## can add hidden_layers component here!

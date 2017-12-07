@@ -14,17 +14,18 @@ class LoadData( object ):
     '''
 
     # Three files are needed in the path
-    def __init__(self, path, random_seed, test_size):
+    def __init__(self, path, random_seed, test_size, organism_id):
         np.random.seed(random_seed)
         random.seed(random_seed)
         self.path = path
-        self.linkfile = path + "yeast_edgelist_train.txt"
-        self.testlinkfile = path + "yeast_edgelist_test.txt"
-        self.vallinkfile = path + "yeast_edgelist_val.txt"
-        # self.attrfile = path + "yeast_data.txt"
-        self.attrfile = path + "yeast_data_standard.txt"
-        self.randomsurfingfile = path + "PPMI.txt"
-        # convertdata(self.linkfile, self.testlinkfile, self.vallinkfile, test_size=test_size)
+        self.linkfile = path + "edgelist_biogrid.txt"
+        self.datafile = path + "net"+ str(organism_id) +"_expression_data.tsv"
+        self.trainlinkfile = path + "edgelist_train.txt"
+        self.testlinkfile = path + "edgelist_test.txt"
+        self.vallinkfile = path + "edgelist_val.txt"
+        # self.attrfile = path + "data.txt"
+        self.attrfile = path + "data_standard.txt"
+        convertdata(self.path, self.datafile, self.linkfile, self.trainlinkfile, self.testlinkfile, self.vallinkfile, test_size=test_size)
         #self.vocabfile = path + "vocab.txt"
         self.node_map = {} # [node_name: id] for map node to id inside the program, based on links since some nodes might not have attributes
         self.nodes = {}
@@ -33,10 +34,19 @@ class LoadData( object ):
         self.X_validation = []# a list of 3-element lists, read from validation_link.txt
         self.node_neighbors_map = {} # [nodeid: neighbors_set] each node id maps to its neighbors set
         # self.read_random_surfing()
+        print("Constructing Nodes")
         self.construct_nodes()
+
+        print("Constructing train data")
         self.construct_X()
+
+        print("Constructing Neighborhood maps")
         self.construct_node_neighbors_map()
+
+        print("Constructing test links")
         self.read_test_link()
+
+        print("Constructing validation links")
         self.read_validation_link()
 
     def readvocab(self):
@@ -87,7 +97,7 @@ class LoadData( object ):
         print("id_N:", self.id_N)
 
     def read_link(self): # read link file to a list of links
-        f = open(self.linkfile)
+        f = open(self.trainlinkfile)
         self.links = []
         line = f.readline()
         while line:

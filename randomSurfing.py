@@ -75,9 +75,9 @@ def main():
     args = parser.parse_args()
 
 
-    filename = "yeast_edgelist_biogrid.txt"
+    filename = "edgelist_biogrid.txt"
 
-    edgelist = pd.read_csv("./data/yeast_edgelist_biogrid.txt", sep=" ", header=None)
+    edgelist = pd.read_csv("./data/edgelist_biogrid.txt", sep=" ", header=None)
     data = load_data("./data/net4_expression_data.tsv")
     edgeMatrix = convertSortedRankTSVToAdjMatrix(edgelist, data.shape[0])
 

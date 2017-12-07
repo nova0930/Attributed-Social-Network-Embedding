@@ -18,7 +18,7 @@ embeddings = pd.read_csv("./output/yeast/embeddings.txt", header=0, index_col=0)
 
 sim = cosine_similarity(embeddings)
 
-edgelist= pd.read_csv("./data/yeast/yeast_edgelist_biogrid.txt", sep=" ", header=None)
+edgelist= pd.read_csv("./data/yeast/edgelist_biogrid.txt", sep=" ", header=None)
 print(edgelist.shape)
 n = edgelist.shape[0]
 
