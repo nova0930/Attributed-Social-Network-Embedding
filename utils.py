@@ -307,7 +307,7 @@ def convertSortedRankTSVToAdjMatrix (input=None, nodes=None):
     valuesToAdd = tbl.iloc[startIndices[len(startIndices)-1]:len(tbl.iloc[:, 1]), 2]
 
     m[rowIndexes, colIndex] = valuesToAdd
-    # m = pd.DataFrame(m)
+    m = pd.DataFrame(m)
     # m.to_csv(outputFilename, header=False, columns=None, index=False )
     # else write to function output
     return (m)

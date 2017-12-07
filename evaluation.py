@@ -1,10 +1,14 @@
 import numpy as np
 import math
+
+from sklearn import svm
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics.pairwise import manhattan_distances
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import cross_val_score
 
 
 def calculate_distance( embeddings, type): # N * emb_size
@@ -25,6 +29,8 @@ def cosine_similarity( a,  b):
     sum = 0.0
     for i in range(len(a)):
         sum = sum + a[i] * b[i]
+    if (norm(a) * norm(b) ==0):
+        return 0
     return sum/(norm(a) * norm(b))
 
 def evaluate_ROC(X_test, Embeddings):
@@ -57,3 +63,15 @@ def evaluate_MAP( node_neighbors_map, Embeddings, distance_measure):
         MAP +=  average_precision_score(Y_true[node,:], Y_predict[node,:])
 
     return MAP/len(node_neighbors_map)
+
+
+def classifier_ROC(X_test, Embeddings):
+    y_true = [X_test[i][2] for i in range(len(X_test))]
+    X = np.zeros([len(X_test), Embeddings.shape[1] * 2])
+    for i in range(len(X_test)):
+         X[i,:] = np.concatenate([Embeddings[X_test[i][0], :], Embeddings[X_test[i][1], :]])
+    print(X.shape)
+    model = svm.SVC()
+    print(cross_val_score(model, X, y_true, scoring='accuracy', cv=10))
+    accuracy = cross_val_score(model, X, y_true, scoring='accuracy', cv=10).mean()
+    return accuracy

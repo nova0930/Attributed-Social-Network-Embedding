@@ -15,8 +15,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 import evaluation
 
 class SNE(BaseEstimator, TransformerMixin):
-    def __init__(self, data, id_embedding_size, attr_embedding_size,
-                 batch_size=128, alpha = 1, n_neg_samples=10,
+    def __init__(self, data, id_embedding_size, attr_embedding_size, pretrained_weights,
+                 batch_size=128, alpha = 1, beta = 0.01, n_neg_samples=10,
                 epoch=100, random_seed = 2016):
         # bind params to class
         self.node_neighbors_map = data.node_neighbors_map
@@ -31,11 +31,13 @@ class SNE(BaseEstimator, TransformerMixin):
         self.id_embedding_size = id_embedding_size
         self.attr_embedding_size = attr_embedding_size
         self.alpha = alpha
+        print("For threshold ", self.alpha)
         self.n_neg_samples = n_neg_samples
         self.epoch = epoch
         self.random_seed = random_seed
-        self.hidden_size_1 = 200
-        self.beta = 0.01
+        self.hidden_size_1 = 128
+        self.beta = beta
+        self.pretrained_weights = pretrained_weights
         # init all variables in a tensorflow graph
         self._init_graph()
 
@@ -62,10 +64,9 @@ class SNE(BaseEstimator, TransformerMixin):
             # Model.
             # Look up embeddings for node_id.
             self.id_embed =  tf.nn.embedding_lookup(self.weights['in_embeddings'], self.train_data_id) # batch_size * id_dim
-            self.attr_layer_1 = tf.nn.relu(tf.add(tf.matmul(self.train_data_attr, self.weights['hidden_1']), self.weights['bias_1']))
-            self.drop_out = tf.nn.dropout(self.attr_layer_1, self.keep_prob)
-            self.attr_embed =  tf.nn.relu(tf.matmul(self.drop_out, self.weights['attr_embeddings']))  # batch_size * attr_dim
-            self.embed_layer = tf.concat([self.id_embed, self.alpha * (self.attr_embed)], 1) # batch_size * (id_dim + attr_dim)
+            self.attr_layer_1 = tf.nn.relu(tf.add(tf.matmul(self.train_data_attr, self.weights['attr_hidden_1']), self.weights['attr_bias_1']))
+            self.attr_embed =  tf.nn.relu(tf.add(tf.matmul(self.attr_layer_1, self.weights['attr_embeddings']), self.weights['attr_bias_2'])) # batch_size * attr_dim
+            self.embed_layer = tf.concat([ self.id_embed, self.alpha * (self.attr_embed)], 1) # batch_size * (id_dim + attr_dim)
 
             ## can add hidden_layers component here!
 
@@ -74,7 +75,7 @@ class SNE(BaseEstimator, TransformerMixin):
                                                   self.train_labels,  self.embed_layer,  self.n_neg_samples, self.node_N))
 
             #Regularizer
-            self.regularizer = tf.nn.l2_loss(self.weights['attr_embeddings']) + tf.nn.l2_loss(self.weights['hidden_1'])
+            self.regularizer = tf.nn.l2_loss(self.weights['attr_embeddings']) + tf.nn.l2_loss(self.weights['attr_hidden_1']) +   tf.nn.l2_loss(self.weights['attr_bias_1'])  +tf.nn.l2_loss(self.weights['attr_bias_2'])
 
             self.loss = tf.reduce_mean(self.loss + self.beta * self.regularizer)
 
@@ -88,14 +89,25 @@ class SNE(BaseEstimator, TransformerMixin):
     def _initialize_weights(self):
         all_weights = dict()
         all_weights['in_embeddings'] = tf.Variable(tf.random_uniform([self.node_N, self.id_embedding_size], -1.0, 1.0))  # id_N * id_dim
-        all_weights['attr_embeddings'] = tf.Variable(tf.random_uniform([self.hidden_size_1,self.attr_embedding_size], -1.0, 1.0)) # attr_M * attr_dim
         all_weights['out_embeddings'] = tf.Variable(tf.truncated_normal([self.node_N, self.id_embedding_size + self.attr_embedding_size],
                                     stddev=1.0 / math.sqrt(self.id_embedding_size + self.attr_embedding_size)))
         all_weights['biases'] = tf.Variable(tf.zeros([self.node_N]))
 
-        all_weights['hidden_1'] = tf.Variable(tf.random_normal([self.attr_M, self.hidden_size_1]))
-        all_weights['bias_1'] = tf.Variable(tf.zeros([self.hidden_size_1]))
+        if(self.pretrained_weights==None):
+            all_weights['attr_embeddings'] = tf.Variable(
+                tf.truncated_normal([self.hidden_size_1, self.attr_embedding_size],
+                                    stddev=1.0 / math.sqrt(self.attr_embedding_size)))  # attr_M * attr_dim
+            all_weights['attr_hidden_1'] = tf.Variable(tf.truncated_normal([self.attr_M, self.hidden_size_1],
+                                                                           stddev=1.0 / math.sqrt(self.hidden_size_1)))
+            all_weights['attr_bias_1'] = tf.Variable(tf.zeros([self.hidden_size_1]))
+            all_weights['attr_bias_2'] = tf.Variable(tf.zeros([self.attr_embedding_size]))
 
+        else:
+            print("Using pretrained weights")
+            all_weights['attr_hidden_1'] = self.pretrained_weights['w1']
+            all_weights['attr_bias_1'] = self.pretrained_weights['b1']
+            all_weights['attr_embeddings'] = self.pretrained_weights['w2']  # attr_M * attr_dim
+            all_weights['attr_bias_2'] = self.pretrained_weights['b2']
         return all_weights
 
     def partial_fit(self, X): # fit a batch
@@ -148,4 +160,3 @@ class SNE(BaseEstimator, TransformerMixin):
         if type == 'out_embedding':
             Embedding = self.sess.run(self.weights['out_embeddings'])
             return Embedding  # nodes_number * (id_dim + attr_dim)
-

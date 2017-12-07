@@ -14,7 +14,7 @@ class LoadData( object ):
     '''
 
     # Three files are needed in the path
-    def __init__(self, path, random_seed):
+    def __init__(self, path, random_seed, test_size):
         np.random.seed(random_seed)
         random.seed(random_seed)
         self.path = path
@@ -24,7 +24,7 @@ class LoadData( object ):
         # self.attrfile = path + "yeast_data.txt"
         self.attrfile = path + "yeast_data_standard.txt"
         self.randomsurfingfile = path + "PPMI.txt"
-        convertdata(self.linkfile, self.testlinkfile, self.vallinkfile, test_size=0.3)
+        # convertdata(self.linkfile, self.testlinkfile, self.vallinkfile, test_size=test_size)
         #self.vocabfile = path + "vocab.txt"
         self.node_map = {} # [node_name: id] for map node to id inside the program, based on links since some nodes might not have attributes
         self.nodes = {}
