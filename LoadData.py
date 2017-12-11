@@ -25,7 +25,7 @@ class LoadData( object ):
         self.vallinkfile = path + "edgelist_val.txt"
         # self.attrfile = path + "data.txt"
         self.attrfile = path + "data_standard.txt"
-        convertdata(self.path, self.datafile, self.linkfile, self.trainlinkfile, self.testlinkfile, self.vallinkfile, test_size=test_size)
+        # convertdata(self.path, self.datafile, self.linkfile, self.trainlinkfile, self.testlinkfile, self.vallinkfile, test_size=test_size)
         #self.vocabfile = path + "vocab.txt"
         self.node_map = {} # [node_name: id] for map node to id inside the program, based on links since some nodes might not have attributes
         self.nodes = {}

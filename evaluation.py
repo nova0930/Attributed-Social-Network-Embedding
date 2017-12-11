@@ -65,13 +65,31 @@ def evaluate_MAP( node_neighbors_map, Embeddings, distance_measure):
     return MAP/len(node_neighbors_map)
 
 
-def classifier_ROC(X_test, Embeddings):
-    y_true = [X_test[i][2] for i in range(len(X_test))]
-    X = np.zeros([len(X_test), Embeddings.shape[1] * 2])
-    for i in range(len(X_test)):
-         X[i,:] = np.concatenate([Embeddings[X_test[i][0], :], Embeddings[X_test[i][1], :]])
-    print(X.shape)
-    model = svm.SVC()
-    print(cross_val_score(model, X, y_true, scoring='accuracy', cv=10))
-    accuracy = cross_val_score(model, X, y_true, scoring='accuracy', cv=10).mean()
-    return accuracy
+def load_embedding(embedding_file, N):
+    f = open(embedding_file)
+    i = 0
+    line = f.readline()
+    line = line.strip().split(' ')
+    d = int(line[1])
+    embeddings = np.zeros([int(N), d])
+    line = f.readline()
+    while line:
+        line = line.strip().split(' ')
+        embeddings[int(line[0]),:] = line[1:]
+        i = i + 1
+        line = f.readline()
+    f.close()
+    id_N = i
+    return embeddings
+
+
+def read_test_link(testlinkfile):
+    X_test = []
+    f = open(testlinkfile)
+    line = f.readline()
+    while line:
+        line = line.strip().split(' ')
+        X_test.append([int(line[0]), int(line[1]), int(line[2])])
+        line = f.readline()
+    f.close()
+    return X_test

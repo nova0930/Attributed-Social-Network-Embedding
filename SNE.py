@@ -5,20 +5,21 @@ Tensorflow implementation of Social Network Embedding framework (SNE)
 
 '''
 
-
+import pandas as pd
 import math
 import random
-
+import os
 import numpy as np
 import tensorflow as tf
 from sklearn.base import BaseEstimator, TransformerMixin
 import evaluation
 
 class SNE(BaseEstimator, TransformerMixin):
-    def __init__(self, data, id_embedding_size, attr_embedding_size, pretrained_weights,
-                 batch_size=128, alpha = 0, beta = 0.01, n_neg_samples=10,
+    def __init__(self, path, data, id_embedding_size, attr_embedding_size, pretrained_weights,
+                 batch_size=128, alpha = 1, beta = 0.01, n_neg_samples=10,
                 epoch=100, random_seed = 2016):
         # bind params to class
+        self.path = path
         self.node_neighbors_map = data.node_neighbors_map
         # self.random_walk_length = data.random_walk_length
         self.batch_size = batch_size
@@ -53,7 +54,6 @@ class SNE(BaseEstimator, TransformerMixin):
             # Input data.
             self.train_data_id = tf.placeholder(tf.int32, shape=[None])  # batch_size * 1
             self.train_data_attr = tf.placeholder(tf.float32, shape=[None, self.attr_M])  # batch_size * attr_M
-            # self.train_data_walks = tf.placeholder(tf.float32, shape=[None, self.random_walk_length])  # batch_size * random_walk_length
             self.train_labels = tf.placeholder(tf.int32, shape=[None, 1])  # batch_size * 1
             self.keep_prob = tf.placeholder(tf.float32)
 
@@ -64,11 +64,24 @@ class SNE(BaseEstimator, TransformerMixin):
             # Model.
             # Look up embeddings for node_id.
             self.id_embed =  tf.nn.embedding_lookup(self.weights['in_embeddings'], self.train_data_id) # batch_size * id_dim
-            self.attr_layer_1 = tf.nn.relu(tf.add(tf.matmul(self.train_data_attr, self.weights['attr_hidden_1']), self.weights['attr_bias_1']))
-            self.drop_out = tf.nn.dropout(self.attr_layer_1, self.keep_prob)
-            self.attr_embed =  tf.nn.relu(tf.add(tf.matmul(self.drop_out, self.weights['attr_embeddings']), self.weights['attr_bias_2'])) # batch_size * attr_dim
+            # self.attr_layer_1 = tf.nn.relu(tf.add(tf.matmul(self.train_data_attr, self.weights['attr_hidden_1']), self.weights['attr_bias_1']))
+            z2_attrib = tf.matmul(self.train_data_attr, self.weights['attr_hidden_1'])
+            batch_mean, batch_var = tf.nn.moments(z2_attrib, [0])
+            scale2 = tf.Variable(tf.ones([self.hidden_size_1]))
+            beta2 = tf.Variable(tf.zeros([self.hidden_size_1]))
+            self.batch_norm_layer = tf.nn.batch_normalization(z2_attrib,batch_mean,batch_var,beta2,scale2,1e-3)
+
+            self.attr_layer_1 = tf.nn.relu(self.batch_norm_layer)
+
+            self.attr_embed =  tf.nn.relu(tf.matmul(self.attr_layer_1, self.weights['attr_embeddings'])) # batch_size * attr_dim
+
+
             self.embed_layer = tf.concat([ self.id_embed, self.alpha * (self.attr_embed)], 1) # batch_size * (id_dim + attr_dim)
 
+            batch_mean_1, batch_var_1 = tf.nn.moments(self.embed_layer, [0])
+            scale3 = tf.Variable(tf.ones([ self.id_embedding_size + self.attr_embedding_size]))
+            beta3 = tf.Variable(tf.zeros([ self.id_embedding_size + self.attr_embedding_size]))
+            self.batch_norm_layer = tf.nn.batch_normalization(self.embed_layer, batch_mean_1, batch_var_1, beta3, scale3, 1e-3)
             ## can add hidden_layers component here!
 
             # Compute the loss, using a sample of the negative labels each time.
@@ -76,7 +89,7 @@ class SNE(BaseEstimator, TransformerMixin):
                                                   self.train_labels,  self.embed_layer,  self.n_neg_samples, self.node_N))
 
             #Regularizer
-            self.regularizer = tf.nn.l2_loss(self.weights['attr_embeddings']) + tf.nn.l2_loss(self.weights['attr_hidden_1']) +   tf.nn.l2_loss(self.weights['attr_bias_1'])  +tf.nn.l2_loss(self.weights['attr_bias_2'])
+            self.regularizer = tf.nn.l2_loss(self.weights['attr_embeddings']) + tf.nn.l2_loss(self.weights['attr_hidden_1']) +  tf.nn.l2_loss(self.weights['attr_bias_1'])  +tf.nn.l2_loss(self.weights['attr_bias_2'])
 
             self.loss = tf.reduce_mean(self.loss + self.beta * self.regularizer)
 
@@ -94,21 +107,13 @@ class SNE(BaseEstimator, TransformerMixin):
                                     stddev=1.0 / math.sqrt(self.id_embedding_size + self.attr_embedding_size)))
         all_weights['biases'] = tf.Variable(tf.zeros([self.node_N]))
 
-        if(self.pretrained_weights==None):
-            all_weights['attr_embeddings'] = tf.Variable(
-                tf.truncated_normal([self.hidden_size_1, self.attr_embedding_size],
-                                    stddev=1.0 / math.sqrt(self.attr_embedding_size)))  # attr_M * attr_dim
-            all_weights['attr_hidden_1'] = tf.Variable(tf.truncated_normal([self.attr_M, self.hidden_size_1],
-                                                                           stddev=1.0 / math.sqrt(self.hidden_size_1)))
-            all_weights['attr_bias_1'] = tf.Variable(tf.zeros([self.hidden_size_1]))
-            all_weights['attr_bias_2'] = tf.Variable(tf.zeros([self.attr_embedding_size]))
-
-        else:
-            print("Using pretrained weights")
-            all_weights['attr_hidden_1'] = self.pretrained_weights['w1']
-            all_weights['attr_bias_1'] = self.pretrained_weights['b1']
-            all_weights['attr_embeddings'] = self.pretrained_weights['w2']  # attr_M * attr_dim
-            all_weights['attr_bias_2'] = self.pretrained_weights['b2']
+        all_weights['attr_embeddings'] = tf.Variable(
+            tf.truncated_normal([self.hidden_size_1, self.attr_embedding_size],
+                                stddev=1.0 / math.sqrt(self.attr_embedding_size)))  # attr_M * attr_dim
+        all_weights['attr_hidden_1'] = tf.Variable(tf.truncated_normal([self.attr_M, self.hidden_size_1],
+                                                                       stddev=1.0 / math.sqrt(self.hidden_size_1)))
+        all_weights['attr_bias_1'] = tf.Variable(tf.zeros([self.hidden_size_1]))
+        all_weights['attr_bias_2'] = tf.Variable(tf.zeros([self.attr_embedding_size]))
         return all_weights
 
     def partial_fit(self, X): # fit a batch
@@ -123,24 +128,36 @@ class SNE(BaseEstimator, TransformerMixin):
 
     def train(self): # fit a dataset
 
+        total_iterations = 0
+        # Best validation accuracy seen so far.
+        best_validation_accuracy = 0.0
+
+        # Iteration-number for last improvement to validation accuracy.
+        last_improvement = 0
+
+        # Stop optimization if no improvement found in this many iterations.
+        require_improvement = 5
+
+
         print('Using in + out embedding')
-        val_roc = []
         for epoch in range( self.epoch ):
             total_batch = int( len(self.X_train['data_id_list']) / self.batch_size)
-            # print('total_batch in 1 epoch: ', total_batch)
             # Loop over all batches
+            total_iterations += 1
+            avg_cost = 0.
             for i in range(total_batch):
                 # generate a batch data
                 batch_xs = {}
                 start_index = np.random.randint(0, len(self.X_train['data_id_list']) - self.batch_size)
-                ind = random.sample(range(len(self.X_train['data_id_list']) ), self.batch_size)
-                batch_xs['batch_data_id'] = self.X_train['data_id_list'][ind]
-                # batch_xs['batch_random_walk'] = self.X_train['data_random_walks'][ind]
-                batch_xs['batch_data_attr'] = self.X_train['data_attr_list'][ind]
-                batch_xs['batch_data_label'] = self.X_train['data_label_list'][ind]
+                batch_xs['batch_data_id'] = self.X_train['data_id_list'][start_index:(start_index + self.batch_size)]
+                batch_xs['batch_data_attr'] = self.X_train['data_attr_list'][
+                                              start_index:(start_index + self.batch_size)]
+                batch_xs['batch_data_label'] = self.X_train['data_label_list'][
+                                               start_index:(start_index + self.batch_size)]
+
                 # Fit training using batch data
                 cost = self.partial_fit(batch_xs)
-
+                avg_cost += cost / total_batch
             # Display logs per epoch
             Embeddings_out = self.getEmbedding('out_embedding', self.nodes)
             Embeddings_in = self.getEmbedding('embed_layer', self.nodes)
@@ -148,10 +165,42 @@ class SNE(BaseEstimator, TransformerMixin):
 
             # link prediction test
             roc = evaluation.evaluate_ROC(self.X_validation, Embeddings)
-            print("Epoch:", '%04d' % (epoch + 1), \
-                         "roc=", "{:.9f}".format(roc))
-            val_roc.append(roc)
-        return Embeddings, val_roc
+            # print("Epoch:", '%04d' % (epoch + 1), \
+            #              "roc=", "{:.9f}".format(roc))
+
+             # If validation accuracy is an improvement over best-known.
+            if roc > best_validation_accuracy:
+                # Update the best-known validation accuracy.
+                best_validation_accuracy = roc
+
+                # Set the iteration for the last improvement to current.
+                last_improvement = total_iterations
+
+                # Save all variables of the TensorFlow graph to file.
+                self.embedding_checkpoints(Embeddings, "save")
+
+                # A string to be printed below, shows improvement found.
+                improved_str = '*'
+            else:
+                # An empty string to be printed below.
+                # Shows that no improvement was found.
+                improved_str = ''
+
+            # Status-message for printing.
+            msg = "Epoch: {0:>6}, Train-Batch Loss: {1:.9f}, Validation AUC: {2:.9f} {3}"
+
+            # Print it.
+            print(msg.format(epoch + 1, avg_cost, roc, improved_str))
+
+            # If no improvement found in the required number of iterations.
+            if total_iterations - last_improvement > require_improvement:
+                print("No improvement found in a while, stopping optimization.")
+
+                # Break out from the for-loop.
+                break
+
+        Embeddings = self.embedding_checkpoints(Embeddings, "restore")
+        return Embeddings
 
     def getEmbedding(self, type, nodes):
         if type == 'embed_layer':
@@ -161,3 +210,13 @@ class SNE(BaseEstimator, TransformerMixin):
         if type == 'out_embedding':
             Embedding = self.sess.run(self.weights['out_embeddings'])
             return Embedding  # nodes_number * (id_dim + attr_dim)
+
+    def embedding_checkpoints(self, Embeddings, type):
+        file = self.path + "Embeddings.txt"
+        if type == "save":
+            if os.path.isfile(file):
+                os.remove(file)
+            pd.DataFrame(Embeddings).to_csv(file, index=False, header=False)
+        if type == 'restore':
+            Embeddings = pd.read_csv(file, header=None)
+            return np.array(Embeddings)

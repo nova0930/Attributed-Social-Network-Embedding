@@ -31,7 +31,8 @@ from sklearn.cross_validation import train_test_split
 
 
 class autoencoder():
-    def __init__(self, num_input, batch_size = 64, num_hidden_1 = 128, num_hidden_2 = 20):
+    def __init__(self, path, num_input, batch_size = 64, num_hidden_1 = 128, num_hidden_2 = 20):
+        self.path = path
         self.num_input = num_input
         self.batch_size = batch_size
         self.num_hidden_1 = num_hidden_1
@@ -42,7 +43,7 @@ class autoencoder():
         self.__init_graph()
 
     def read_data(self):
-        self.data = pd.read_csv("./data/yeast/data.txt", sep=" ", header=None)
+        self.data = pd.read_csv(self.path + "data_standard.txt", sep=" ", header=None)
         self.data = np.array(self.data.iloc[:, 1:])
         # scaler = MinMaxScaler()
         # X_train = scaler.fit_transform(data)
