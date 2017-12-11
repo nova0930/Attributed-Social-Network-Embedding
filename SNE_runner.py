@@ -4,12 +4,9 @@ import numpy as np
 import LoadData as data
 import evaluation
 from SNE import SNE
-import matplotlib.pyplot as plt
-import pandas as pd
-from autoencoder import autoencoder
-
+import pickle
 # Set random seeds
-from preprocessBiogrid import biogrid
+# from preprocessBiogrid import biogrid
 
 SEED = 2016
 random.seed(SEED)
@@ -23,7 +20,7 @@ def parse_args():
                         help='Organism Identifier: 3 for Ecoli and 4 for Yeast')
     parser.add_argument('--id_dim', type=int, default=20,
                         help='Dimension for id_part.')
-    parser.add_argument('--epoch', type=int, default=20,
+    parser.add_argument('--epoch', type=int, default=100,
                         help='Numbe r of epochs.')
     parser.add_argument('--n_neg_samples', type=int, default=10,
                         help='Number of negative samples.')
@@ -47,7 +44,12 @@ if __name__ == '__main__':
     print("data_path: ", args.data_path)
     path = args.data_path
     # # biogrid(path, 'ecoli')
-    Data = data.LoadData( path , SEED, test_size=0.3, organism_id=args.organism_id)
+    # Data = data.LoadData( path , SEED, test_size=0.3, organism_id=args.organism_id)
+
+    data_file = open('output/processedData.pkl', 'rb')
+    Data = pickle.load(data_file)
+    data_file.close()
+
     print("Total training links: ", len(Data.links))
     print("Total epoch: ", args.epoch)
 

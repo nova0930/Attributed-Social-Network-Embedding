@@ -48,7 +48,7 @@ class SNE(BaseEstimator, TransformerMixin):
         Init a tensorflow Graph containing: input data, variables, model, loss, optimizer
         '''
         self.graph = tf.Graph()
-        with self.graph.as_default():#, tf.device('/cpu:0'):
+        with self.graph.as_default(), tf.device('/gpu:0'):
             # Set graph level random seed
             tf.set_random_seed(self.random_seed)
             # Input data.
