@@ -28,7 +28,7 @@ def parse_args():
                         help='Dimension for attr_part.')
     parser.add_argument('--batch_size', type=int, default=32,
                         help='Dimension for attr_part.')
-    parser.add_argument('--alpha', type=int, default=1,
+    parser.add_argument('--alpha', type=int, default=0,
                         help='Regularize the attribute embeddings')
     return parser.parse_args()
 
@@ -44,11 +44,11 @@ if __name__ == '__main__':
     print("data_path: ", args.data_path)
     path = args.data_path
     # # biogrid(path, 'ecoli')
-    # Data = data.LoadData( path , SEED, test_size=0.3, organism_id=args.organism_id)
+    Data = data.LoadData( path , SEED, test_size=0.5, organism_id=args.organism_id)
 
-    data_file = open('output/processedData.pkl', 'rb')
-    Data = pickle.load(data_file)
-    data_file.close()
+    # data_file = open('output/processedData.pkl', 'rb')
+    # Data = pickle.load(data_file)
+    # data_file.close()
 
     print("Total training links: ", len(Data.links))
     print("Total epoch: ", args.epoch)

@@ -86,7 +86,7 @@ class SNE(BaseEstimator, TransformerMixin):
 
             # Compute the loss, using a sample of the negative labels each time.
             self.loss =  tf.reduce_mean(tf.nn.sampled_softmax_loss(self.weights['out_embeddings'], self.weights['biases'],
-                                                  self.train_labels,  self.embed_layer,  self.n_neg_samples, self.node_N))
+                                                  self.train_labels, self.embed_layer, self.n_neg_samples, self.node_N))
 
             #Regularizer
             self.regularizer = tf.nn.l2_loss(self.weights['attr_embeddings']) + tf.nn.l2_loss(self.weights['attr_hidden_1']) +  tf.nn.l2_loss(self.weights['attr_bias_1'])  +tf.nn.l2_loss(self.weights['attr_bias_2'])
