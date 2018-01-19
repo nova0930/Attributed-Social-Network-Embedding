@@ -30,8 +30,8 @@ from sklearn import preprocessing
 from sklearn.cross_validation import train_test_split
 
 
-class autoencoder():
-    def __init__(self, path, num_input, batch_size = 64, num_hidden_1 = 128, num_hidden_2 = 20):
+class Autoencoder():
+    def __init__(self, path, num_input, batch_size = 64, num_hidden_1 = 256, num_hidden_2 = 128):
         self.path = path
         self.num_input = num_input
         self.batch_size = batch_size
@@ -62,10 +62,10 @@ class autoencoder():
             # Building the encoder
             def encoder(x):
                 # Encoder Hidden layer with sigmoid activation #1
-                layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(x, self.weights['encoder_h1']),
+                layer_1 = tf.nn.relu(tf.add(tf.matmul(x, self.weights['encoder_h1']),
                                                self.biases['encoder_b1']))
                 # Encoder Hidden layer with sigmoid activation #2
-                layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, self.weights['encoder_h2']),
+                layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, self.weights['encoder_h2']),
                                                self.biases['encoder_b2']))
                 return layer_2
 
@@ -73,10 +73,10 @@ class autoencoder():
             # Building the decoder
             def decoder(x):
                 # Decoder Hidden layer with sigmoid activation #1
-                layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(x, self.weights['decoder_h1']),
+                layer_1 = tf.nn.relu(tf.add(tf.matmul(x, self.weights['decoder_h1']),
                                                self.biases['decoder_b1']))
                 # Decoder Hidden layer with sigmoid activation #2
-                layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, self.weights['decoder_h2']),
+                layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, self.weights['decoder_h2']),
                                                self.biases['decoder_b2']))
                 return layer_2
 
@@ -114,17 +114,39 @@ class autoencoder():
 
     def train(self):  # fit a dataset
         # Training
+        lowest_loss = 0.0
         for i in range(1, self.num_steps+1):
             # Prepare Data
-            ind = random.sample(range(len(self.dataset)), self.batch_size)
-            batch_xs = self.dataset[ind]
-            # Get the next batch of MNIST data (only images are needed, not labels)
+            ind = random.sample(range(len(self.X_train)), self.batch_size)
+            batch_xs = self.X_train[ind]
+            # Get the next batch of data
 
             # Run optimization op (backprop) and cost op (to get loss value)
             _, l = self.sess.run([self.optimizer, self.loss], feed_dict={self.X: batch_xs})
+            
+            test_loss = self.sess.run(self.loss, feed_dict={self.X: self.X_test})
             # Display logs per step
+            if i == 1:
+                lowest_loss = test_loss
             if i % self.display_step == 0 or i == 1:
-                print('Step %i: Minibatch Loss: %f' % (i, l))
+                # If validation accuracy is an improvement over best-known.
+                if test_loss < lowest_loss:
+                    # Update the best-known validation accuracy.
+                    lowest_loss = test_loss
+
+                    # A string to be printed below, shows improvement found.
+                    improved_str = '*'
+                else:
+                    # An empty string to be printed below.
+                    # Shows that no improvement was found.
+                    improved_str = ''
+
+                # Status-message for printing.
+                msg = "Step: {0:>6}, Train-Batch Loss: {1:.9f}, Test Loss: {2:.9f} {3}"
+
+                # Print it.
+                print(msg.format(i, l, test_loss, improved_str))
+                # print('Step %i: Minibatch Loss: %f' % (i, l))
 
         # Testing
         # Encode and decode images from test set and visualize their reconstruction.
@@ -137,4 +159,5 @@ class autoencoder():
 
         # pd.DataFrame(g).to_csv("./data/yeast/expression_embeddings.txt", index=True, columns=None,header=None)
 
-        return weights
+        latentRep = self.sess.run(self.encoder_op, feed_dict={self.X: self.dataset})
+        return weights, latentRep

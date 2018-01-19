@@ -6,7 +6,7 @@ def plot_embedding2D(node_pos, node_colors=None, di_graph=None):
     node_num, embedding_dim = node_pos.shape
 
     if(embedding_dim > 2):
-        print("Embedding Dimension greater than 2, use tSNE to reduce it to 2")
+        print("Embedding Dimension greater than 2, use tGNE to reduce it to 2")
         model = TSNE(n_components=2)
         node_pos = model.fit_transform(node_pos)
 
