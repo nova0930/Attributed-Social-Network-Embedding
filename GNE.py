@@ -54,7 +54,7 @@ class GNE(BaseEstimator, TransformerMixin):
         '''
         self.graph = tf.Graph()
         with self.graph.as_default(), tf.device('/gpu:0'):
-            # Set graph level random seed
+            # Set graph level random seedt
             tf.set_random_seed(self.random_seed)
             
             # Define a placeholder for input data
@@ -74,11 +74,8 @@ class GNE(BaseEstimator, TransformerMixin):
             self.attr_embed     =  tf.nn.elu(tf.add(tf.matmul(self.train_data_attr, self.weights['attr_embeddings']), self.weights['attr_bias'])) # hidden_size_2 * attr_dim
             
             # fusion layer to create a joint representation vector
-            self.embed_layer    =  tf.concat([ self.id_embed, self.alpha * (self.attr_embed)], 1) # batch_size * (id_dim + attr_dim)
+            self.representation_layer    =  tf.concat([ self.id_embed, self.alpha * (self.attr_embed)], 1) # batch_size * (id_dim + attr_dim)
 
-            # # Hidden layers for non-linear transformation of joint representation
-            self.representation_layer   = tf.nn.softsign(tf.add(tf.matmul(self.embed_layer, self.weights['representation_layer']), self.weights['representation_layer_bias']))
-            
             # Compute the loss, using a sample of the negative labels each time.
             self.loss =  tf.reduce_mean(tf.nn.sampled_softmax_loss(self.weights['out_embeddings'], self.weights['biases'],
                                                   self.train_labels, self.representation_layer, self.n_neg_samples, self.node_N))
@@ -100,10 +97,6 @@ class GNE(BaseEstimator, TransformerMixin):
 
         all_weights['attr_embeddings']  = tf.Variable(tf.random_normal([self.attr_M, self.attr_embedding_size]))  # attr_M * attr_dim
         all_weights['attr_bias']        = tf.Variable(tf.zeros([ self.attr_embedding_size]))
-
-        # Weight initialization for hidden layers for joint representation transformation
-        all_weights['representation_layer']             = tf.Variable(tf.random_normal([self.id_embedding_size + self.attr_embedding_size, self.representation_size]))
-        all_weights['representation_layer_bias']        = tf.Variable(tf.zeros([self.representation_size]))
 
         return all_weights
 
