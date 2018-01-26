@@ -20,13 +20,14 @@ class LoadData( object ):
         self.path = path
         self.linkfile = path + "edgelist_biogrid.txt"
         self.datafile = path + "net"+ str(organism_id) +"_expression_data.tsv"
-        self.trainlinkfile = path + "edgelist_train.txt"
-        self.testlinkfile = path + "edgelist_test.txt"
-        self.vallinkfile = path + "edgelist_val.txt"
-        # self.attrfile = path + "data.txt"
         self.attrfile = path + "data_standard.txt"
-        convertdata(self.path, self.datafile, self.linkfile, self.trainlinkfile, self.testlinkfile, self.vallinkfile, test_size=test_size)
-        #self.vocabfile = path + "vocab.txt"
+
+        self.trainlinkfile = path + "edgelist_train_"+str(test_size)+".txt"
+        self.testlinkfile = path + "edgelist_test_"+str(test_size)+".txt"
+        self.vallinkfile = path + "edgelist_val_"+str(test_size)+".txt"
+
+        # convertdata(self.path, self.datafile, self.linkfile, self.trainlinkfile, self.testlinkfile, self.vallinkfile, test_size=test_size)
+        
         self.node_map = {} # [node_name: id] for map node to id inside the program, based on links since some nodes might not have attributes
         self.nodes = {}
         self.X = {}
@@ -103,6 +104,8 @@ class LoadData( object ):
         while line:
             line = line.strip().split(' ')
             link = [int(line[0]), int(line[1])]
+            self.links.append(link)
+            link = [int(line[1]), int(line[0])]
             self.links.append(link)
             line = f.readline()
         f.close()

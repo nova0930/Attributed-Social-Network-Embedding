@@ -39,32 +39,24 @@ data_file = open("output/ecoli/processedData.pkl", "rb")
 Data = pickle.load(data_file)
 data_file.close()
 #
-print("Evaluating DeepWalk embeddings")
-embeddings_file = "output/ecoli/deepWalk_embeddings_80_final.txt"
-emb = evaluation.load_embedding(embeddings_file, Data.id_N, combineAttribute=False, datafile=path+"data_standard.txt")
-X_test = read_test_link("./data/ecoli/edgelist_test.txt")
-roc = evaluation.evaluate_ROC(X_test, emb)
-print("DeepWalk Method: Accuracy (ROC) in Test Data set", "{:.9f}".format(roc))
-#
-embeddings_file = "output/ecoli/deepWalk_embeddings_80_final.txt"
-emb = evaluation.load_embedding(embeddings_file, Data.id_N, combineAttribute=True, datafile=path+"data_standard.txt")
-X_test = read_test_link("./data/ecoli/edgelist_test.txt")
-roc = evaluation.evaluate_ROC(X_test, emb)
-print("DeepWalk Method: Accuracy (ROC) in Test Data set", "{:.9f}".format(roc))
-# #
-# #
-print("Evaluating LINE embeddings")
-embeddings_file = "output/ecoli/line_embeddings_80_final.txt"
-emb = evaluation.load_embedding(embeddings_file, Data.id_N, combineAttribute=False, datafile=path+"data_standard.txt")
-X_test = read_test_link("./data/ecoli/edgelist_test.txt")
-roc = evaluation.evaluate_ROC(X_test, emb)
-print("LINE Method: Accuracy (ROC) in Test Data set", "{:.9f}".format(roc))
-# #
-embeddings_file = "output/ecoli/line_embeddings_80_final.txt"
-emb = evaluation.load_embedding(embeddings_file, Data.id_N, combineAttribute=True, datafile=path+"data_standard.txt")
-X_test = read_test_link("./data/ecoli/edgelist_test.txt")
-roc = evaluation.evaluate_ROC(X_test, emb)
-print("LINE Method: Accuracy (ROC) in Test Data set", "{:.9f}".format(roc))
+
+for test_size in [0.7, 0.6, 0.5, 0.4, 0.3, 0.2]:
+    print("Evaluating DeepWalk embeddings")
+    embeddings_file = "output/ecoli/deepWalk_embeddings/emb_"+str(test_size)+".txt"
+    emb = evaluation.load_embedding(embeddings_file, Data.id_N, combineAttribute=False, datafile=path+"data_standard.txt")
+    X_test = read_test_link("./data/ecoli/edgelist_test_"+str(test_size)+".txt")
+    roc = evaluation.evaluate_ROC(X_test, emb)
+    print("DeepWalk Method: Accuracy (ROC) in Test Data set", "{:.9f}".format(roc))
+    #
+
+    # #
+    print("Evaluating LINE embeddings")
+    embeddings_file = "output/ecoli/line_embeddings/emb_"+str(test_size)+".txt"
+    emb = evaluation.load_embedding(embeddings_file, Data.id_N, combineAttribute=False, datafile=path+"data_standard.txt")
+    roc = evaluation.evaluate_ROC(X_test, emb)
+    print("LINE Method: Accuracy (ROC) in Test Data set", "{:.9f}".format(roc))
+    # #
+
 
 #
 # print("Evaluating node2vec embeddings")

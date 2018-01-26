@@ -34,10 +34,12 @@ class GNE(BaseEstimator, TransformerMixin):
         self.n_neg_samples          = n_neg_samples
         self.epoch                  = epoch
         self.random_seed            = random_seed
+        self.hidden_size_1          = 256
+        self.hidden_size_2          = 128
         self.beta                   = beta
         self.learning_rate          = learning_rate
         # define the tower structure with later layer having half number of neurons than previous layer
-        self.hidden_layer_size_1    = 256
+        self.hidden_layer_size_1    = (int)((self.id_embedding_size + self.attr_embedding_size )/2)
         self.hidden_layer_size_2    = (int) ((self.hidden_layer_size_1)/2) 
         # self.hidden_layer_size_3    = (int) ((self.hidden_layer_size_2)/2) 
         self.representation_size    = representation_size
@@ -68,16 +70,33 @@ class GNE(BaseEstimator, TransformerMixin):
 
             # Model.
             # Look up embeddings for node_id. u = ENC(node_id)
-            self.id_embed       =  tf.nn.embedding_lookup(self.weights['in_embeddings'], self.train_data_id) # batch_size * id_dim
+            self.id_embed           =  tf.nn.embedding_lookup(self.weights['in_embeddings'], self.train_data_id) # batch_size * id_dim
             
             # # non linear transformation of attribute information to capture the non-linearities
-            self.attr_embed     =  tf.nn.elu(tf.add(tf.matmul(self.train_data_attr, self.weights['attr_embeddings']), self.weights['attr_bias'])) # hidden_size_2 * attr_dim
+            # self.attr_input_dropout =  tf.nn.dropout(self.train_data_attr, self.keep_prob)
+            # self.attr_layer_1         =  tf.nn.elu(tf.add(tf.matmul(self.train_data_attr, self.weights['attr_hidden_1']), self.weights['attr_bias_1'])) # batch_size * hidden_size_1
+            # self.dropout_attr_1     =  tf.nn.dropout(self.attr_layer_1, self.keep_prob)
+            # self.attr_layer_2         =  tf.nn.elu(tf.add(tf.matmul(self.attr_layer_1, self.weights['attr_hidden_2']), self.weights['attr_bias_2'])) # hidden_size_1 * hidden_size_2
+            # self.dropout_attr_2     =  tf.nn.dropout(self.attr_layer_2, self.keep_prob)
+            self.attr_embed         =  tf.nn.elu(tf.add(tf.matmul(self.train_data_attr, self.weights['attr_embeddings']), self.weights['attr_bias'])) # hidden_size_2 * attr_dim
             
             # fusion layer to create a joint representation vector
-            self.embed_layer    =  tf.concat([ self.id_embed, self.alpha * (self.attr_embed)], 1) # batch_size * (id_dim + attr_dim)
+            self.embed_layer        =  tf.concat([ self.id_embed, self.alpha * (self.attr_embed)], 1) # batch_size * (id_dim + attr_dim)
 
-            # # Hidden layers for non-linear transformation of joint representation
-            self.representation_layer   = tf.nn.softsign(tf.add(tf.matmul(self.embed_layer, self.weights['representation_layer']), self.weights['representation_layer_bias']))
+            # # ## Hidden layers for non-linear transformation of joint representation
+            self.dropout_1          = tf.nn.dropout(self.embed_layer, self.keep_prob)
+            self.representation_layer = tf.nn.softsign(tf.add(tf.matmul(self.dropout_1, self.weights['representation_layer']), self.weights['representation_layer_bias']))
+            # self.dropout_2          = tf.nn.dropout(self.hidden_layer_1, self.keep_prob)
+            # self.hidden_layer_2     = tf.nn.tanh(tf.add(tf.matmul(self.dropout_2, self.weights['hidden_layer_2']), self.weights['hidden_bias_2']))
+            # self.dropout_3          = tf.nn.dropout(self.hidden_layer_2, self.keep_prob)
+            # self.hidden_layer_3     = tf.nn.tanh(tf.add(tf.matmul(self.dropout_3, self.weights['hidden_layer_3']), self.weights['hidden_bias_3']))
+
+            
+            # fusion layer to create a joint representation vector
+            # self.representation_layer        =  tf.nn.elu(tf.add(tf.matmul(self.hidden_layer_1, self.weights['representation_layer']), self.weights['representation_layer_bias']))
+
+            # ## Hidden layers for non-linear transformation of joint representation
+            # self.representation_layer = self.embed_layer
             
             # Compute the loss, using a sample of the negative labels each time.
             self.loss =  tf.reduce_mean(tf.nn.sampled_softmax_loss(self.weights['out_embeddings'], self.weights['biases'],
@@ -92,6 +111,7 @@ class GNE(BaseEstimator, TransformerMixin):
 
             self.sess.run(init)
 
+
     def _initialize_weights(self):
         all_weights = dict()
         all_weights['in_embeddings']    = tf.Variable(tf.random_uniform([self.node_N, self.id_embedding_size], -1.0, 1.0))  # id_N * id_dim
@@ -102,8 +122,23 @@ class GNE(BaseEstimator, TransformerMixin):
         all_weights['attr_bias']        = tf.Variable(tf.zeros([ self.attr_embedding_size]))
 
         # Weight initialization for hidden layers for joint representation transformation
-        all_weights['representation_layer']             = tf.Variable(tf.random_normal([self.id_embedding_size + self.attr_embedding_size, self.representation_size]))
+        # all_weights['hidden_layer_1']                   = tf.Variable(tf.random_normal([self.id_embedding_size + self.attr_embedding_size, self.hidden_layer_size_1]))
+        # all_weights['hidden_bias_1']                    = tf.Variable(tf.zeros([self.hidden_layer_size_1]))
+        # all_weights['hidden_layer_2']                   = tf.Variable(tf.random_normal([self.hidden_layer_size_1, self.hidden_layer_size_2]))
+        # all_weights['hidden_bias_2']                    = tf.Variable(tf.zeros([self.hidden_layer_size_2]))
+        # all_weights['hidden_layer_3']                   = tf.Variable(tf.random_normal([self.hidden_layer_size_2, self.hidden_layer_size_3]))
+        # all_weights['hidden_bias_3']                    = tf.Variable(tf.zeros([self.hidden_layer_size_3]))
+        all_weights['representation_layer']             = tf.Variable( tf.random_normal([self.id_embedding_size + self.attr_embedding_size, self.representation_size]))
         all_weights['representation_layer_bias']        = tf.Variable(tf.zeros([self.representation_size]))
+
+
+
+        # Weight initialization for hidden layers for attribute transformation
+        all_weights['attr_hidden_1']    = tf.Variable(tf.random_normal([self.attr_M, self.hidden_size_1]))
+        all_weights['attr_bias_1']      = tf.Variable(tf.zeros([self.hidden_size_1]))
+
+        all_weights['attr_hidden_2']    = tf.Variable(tf.random_normal([self.hidden_size_1, self.hidden_size_2]))
+        all_weights['attr_bias_2']      = tf.Variable(tf.zeros([self.hidden_size_2]))
 
         return all_weights
 
